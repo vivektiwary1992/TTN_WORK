@@ -1,0 +1,82 @@
+->First of all we have to set the debconf frontend to non-interactive as it is recommended in case of shell scripts 
+	echo 'debconf debconf/frontend select Noninteractive' | sudo debconf-set-selections
+	sudo apt-get install -y -q
+
+	1. Debconf is a configuration system for debian packages, provides interface for packages configuration and dialog is the default frontend for apt package manager in debian 
+	Issue- as we were running these commands in script so it is advised to set frontend to non-interactive
+
+->There is an additional configuration which can be added at the time of tasksel not located as apt-get update sometimes is not completely processed so we add a sleep statement , normally     	sleep 30
+
+->Used tasksel which reduced the problem of specifying versions for php, apache and mysql and also installed the extensions needed for setting up drupal
+	sudo tasksel install lamp-server
+	sudo apt install php-dom php-gd php-xml -
+
+->The if statement which is taking the input environment variable as a decisive parameter to whether install drupal or wordpress.
+	if [ $input == "drupal" ]
+
+#If drupal is chosen to be installed
+
+->This if statement is if mysql/ database is already configured in the instance, then no need to create a database
+	if [ -f /etc/init.d/mysql* ]
+        then
+                echo "Already installed"
+        else
+                sudo mysql -u root -padmin -e "CREATE DATABASE drupal CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+                sudo mysql -u root -padmin -e "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES ON drupal.* TO ‘drupaluser’@’localhost’ IDENTIFIED 		BY 'root';"
+        fi
+
+->Download the tar file and then installing it 
+	D9="drupal-9.1.6"
+        wget https://ftp.drupal.org/files/projects/$D9.tar.gz
+        tar -zxf $D9.tar.gz
+
+#Rest is the configuration statements involved in the installation of drupal
+
+->Create a Root directory:
+	mkdir /var/www/html/drupal
+
+->Move Drupal files to localhost:
+	cp -R drupal-8.6.2/* drupal-8.6.2/.htaccess /var/www/html/drupal
+
+->Create directory for Drupal:
+	mkdir /var/www/html/drupal/sites/default/files
+
+->Change permission of the new directories so that Drupal can access them:
+	sudo chown www-data:www-data /var/www/html/drupal/sites/default/files
+
+->Create a Drupal configuration file:
+	sudo cp /var/www/html/drupal/sites/default/default.settings.php /var/www/html/drupal/sites/default/settings.php
+
+->Change access authorization of the Drupal configuration file:
+	sudo chown www-data:www-data /var/www/html/drupal/sites/default/settings.php
+
+->Restart Apache with:
+	service apache2 restart
+
+->Enable Clean URLs on Apache: To avoid warnings when installing Drupal, it is preferable to enable these before.
+	sudo sed -i '172s/.*/        AllowOverride All/' /etc/apache2/apache2.conf
+
+
+#If wordpress is chosen to be installed
+#Same procedure as of drupal
+
+if [ -f /etc/init.d/mysql* ]
+        then
+                echo "Already installed"
+        else
+                sudo mysql -u root -padmin -e "CREATE DATABASE wordpress CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+                sudo mysql -u root -padmin -e "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES ON wordpress.* TO ‘pressuser’@’localhost’ IDENTIFIED BY 'root';"
+        fi
+
+        sudo a2enmod rewrite
+        sudo systemctl restart apache2
+        sudo apt install zip -y
+       # sudo mkdir -p /var/www/html
+       # sudo mkdir -p /var/www/wordpress
+        curl --output /tmp/wordpress.zip https://wordpress.org/latest.zip
+        sudo rm -fr /var/www/html
+        sudo unzip -o /tmp/wordpress.zip -d /var/www/
+        sudo mv /var/www/wordpress/ /var/www/html
+        sudo chown -R www-data.www-data /var/www/html
+        sudo systemctl restart apache2
+
